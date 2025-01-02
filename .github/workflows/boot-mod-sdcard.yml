@@ -133,7 +133,7 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: openwrt/*.img.gz
+        file: openwrt/*
         tag: ${{ github.ref }}
         file_glob: true
         overwrite: true
