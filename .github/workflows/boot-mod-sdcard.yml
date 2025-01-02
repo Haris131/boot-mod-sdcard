@@ -133,15 +133,20 @@ jobs:
         echo "FIRMWARE=$PWD/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload release asset
+   - name: Upload firmware for b860h
+      if: ${{ github.event.inputs.type_dtb == 'b860h' }}
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: |
-         openwrt/*.img.gz
-         openwrt/*.img.xz
-        tag: ${{ github.ref }}
-        file_glob: true
-        overwrite: true
-        body: |
-          ##  Hasil mod sdcard
+        file: /workdir/openwrt/"${{ github.event.inputs.name_file }}"-"b860h.${{ github.event.inputs.type_file }}"
+        tag: b860h-${{ github.ref }}
+        release_name: "B860H Firmware Release"
+
+    - name: Upload firmware for hg680p
+      if: ${{ github.event.inputs.type_dtb == 'hg680p' }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: /workdir/openwrt/"${{ github.event.inputs.name_file }}"-"hg680p.${{ github.event.inputs.type_file }}"
+        tag: hg680p-${{ github.ref }}
+        release_name: "HG680P Firmware Release"
