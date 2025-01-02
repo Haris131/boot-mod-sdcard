@@ -133,6 +133,7 @@ jobs:
         echo "FIRMWARE=$PWD/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
+
    - name: Upload firmware for b860h
       if: ${{ github.event.inputs.type_dtb == 'b860h' }}
       uses: svenstaro/upload-release-action@v2
