@@ -87,5 +87,14 @@ Silakan fork repository ini, lakukan modifikasi, dan kirim pull request. Kontrib
 
 ---
 
+## Credits
+ * [Alam Singgasana](https://www.facebook.com/share/p/ZTPHECCPmVH2nSjZ/?mibextid=oFDknk)
+ * [ULO Builder](https://github.com/armarchindo/ULO-Builder/blob/main/ulo)
+ * [gdown](https://github.com/wkentaro/gdown)
+ * [mediafire-dl](https://github.com/Juvenal-Yescas/mediafire-dl)
+ * [megacmd](https://github.com/meganz/MEGAcmd)
+
+---
+
 ## Lisensi
 Proyek ini dilisensikan di bawah **Lisensi MIT**.
