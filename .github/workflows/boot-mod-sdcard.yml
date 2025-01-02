@@ -71,16 +71,16 @@ jobs:
           else
             link_gdrive=$(echo ${{ github.event.inputs.img_url }} | awk -F "/" '{print $4}' | awk -F "?id=" '{print $2}'|awk -F "&export" '{print $1}')
           fi
-          sudo gdown ${link_gdrive} -O openwrt/firmware.${{ github.event.inputs.type_file }}
+          sudo gdown ${link_gdrive} -O openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
         else
           if [ $(echo ${{ github.event.inputs.img_url }} | grep "mediafire.com") ]; then
-            sudo mediafire-dl ${{ github.event.inputs.img_url }} -o openwrt/firmware.${{ github.event.inputs.type_file }}
+            sudo mediafire-dl ${{ github.event.inputs.img_url }} -o openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
           else
             if [ $(echo ${{ github.event.inputs.img_url }} | grep "mega.nz") ]; then
               file_mega=$(sudo mega-get ${{ github.event.inputs.img_url }} | awk -F: '{print $2}')
-              sudo mv ${file_mega} openwrt/firmware.${{ github.event.inputs.type_file }}
+              sudo mv ${file_mega} openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
             else
-              sudo wget --no-check-certificate ${{ github.event.inputs.img_url }} -O openwrt/firmware.${{ github.event.inputs.type_file }}
+              sudo wget --no-check-certificate ${{ github.event.inputs.img_url }} -O openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
             fi
           fi
         fi
@@ -94,11 +94,11 @@ jobs:
         cd openwrt
         sudo mkdir -p boot
         if [ ${{ github.event.inputs.type_file }} = "img.gz" ]; then
-          sudo gunzip firmware.img.gz
+          sudo gunzip ${{ github.event.inputs.name_file }}.img.gz
         else
-          sudo unxz firmware.img.xz
+          sudo unxz ${{ github.event.inputs.name_file }}.img.xz
         fi
-        device=$(sudo losetup -fP --show firmware.img)
+        device=$(sudo losetup -fP --show ${{ github.event.inputs.name_file }}.img)
         sudo mount ${device}p1 boot
         (cd boot && sudo tar xfz /workdir/openwrt/boot-mod-sdcard.tar.gz)
         echo -e "Patching extlinux.conf"
@@ -125,9 +125,9 @@ jobs:
         sleep 1
         echo -e "Compress file img"
         if [ ${{ github.event.inputs.type_file }} = "img.gz" ]; then
-          sudo gzip firmware.img
+          sudo gzip ${{ github.event.inputs.name_file }}.img
         else
-          sudo xz firmware.img
+          sudo xz ${{ github.event.inputs.name_file }}.img
         fi
         echo -e "Compress Success"
         echo "FIRMWARE=$PWD/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
