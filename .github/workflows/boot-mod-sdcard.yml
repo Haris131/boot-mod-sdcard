@@ -134,7 +134,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload release asset
-        uses: svenstaro/upload-release-action@v2
+        use: svenstaro/upload-release-action@v2
         with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: |
