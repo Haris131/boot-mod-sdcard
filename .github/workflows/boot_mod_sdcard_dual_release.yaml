@@ -1,9 +1,23 @@
 
-name: Boot Mod SDCard
+#==========================================================================
+# Copyright (C) 2024 Chewy Mage 
+# https://github.com/Haris131/boot-mod-sdcard
+#==========================================================================
+
+name: Boot mod sdcard
 
 on:
+  repository_dispatch:
   workflow_dispatch:
     inputs:
+      type_dtb:
+        description: "Select type file"
+        required: false
+        default: "b860h"
+        type: choice
+        options:
+          - b860h
+          - hg680p
       type_file:
         description: "Select type file"
         required: false
@@ -16,109 +30,109 @@ on:
         description: "Set the URL of the image file"
         required: true
         default: ""
+      name_file:
+        description: "Rename firmware"
+        required: true
+        default: "FW-MOD-SDCARD"
 
 env:
   TZ: Asia/Jakarta
 
 jobs:
-  build-b860h:
+  build:
     runs-on: ubuntu-20.04
-    name: Build for b860h
 
     steps:
-    - name: Checkout
+    - name: Checkout source code
       uses: actions/checkout@main
 
-    - name: Setup Environment
+    - name: Initialize environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y wget python3
-        sudo pip3 install gdown git+https://github.com/Juvenal-Yescas/mediafire-dl
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo apt-get -qq update
+        sudo apt-get -y install wget python3
+        sudo apt-get -qq autoremove --purge
+        sudo apt-get -qq clean
+        sudo pip3 install gdown
+        sudo pip3 install git+https://github.com/Juvenal-Yescas/mediafire-dl
+        wget https://mega.nz/linux/repo/xUbuntu_20.04/amd64/megacmd-xUbuntu_20.04_amd64.deb
+        sudo apt install "$PWD/megacmd-xUbuntu_20.04_amd64.deb"
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir/openwrt
+        sudo chown $USER:$GROUPS /workdir
 
-    - name: Download firmware
+    - name: Download file ${{ github.event.inputs.type_file }}
+      working-directory: /workdir
       run: |
-        mkdir -p /workdir/openwrt
-        if [[ "${{ github.event.inputs.img_url }}" == *"drive."* ]]; then
-          gdown ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+        if echo "${{ github.event.inputs.img_url }}" | grep -q "drive."; then
+          link_gdrive=$(echo "${{ github.event.inputs.img_url }}" | awk -F'[/?]' '{print $6}')
+          sudo gdown "$link_gdrive" -O openwrt/firmware.${{ github.event.inputs.type_file }}
+        elif echo "${{ github.event.inputs.img_url }}" | grep -q "mediafire.com"; then
+          sudo mediafire-dl "${{ github.event.inputs.img_url }}" -o openwrt/firmware.${{ github.event.inputs.type_file }}
+        elif echo "${{ github.event.inputs.img_url }}" | grep -q "mega.nz"; then
+          file_mega=$(sudo mega-get "${{ github.event.inputs.img_url }}" | awk -F: '{print $2}')
+          sudo mv "$file_mega" openwrt/firmware.${{ github.event.inputs.type_file }}
         else
-          wget ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+          sudo wget --no-check-certificate "${{ github.event.inputs.img_url }}" -O openwrt/firmware.${{ github.event.inputs.type_file }}
         fi
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Process firmware for b860h
+    - name: Extract firmware
       run: |
-        cd /workdir/openwrt
-        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
-          gunzip firmware.img.gz
+        sudo mv u-boot.bin /workdir/openwrt
+        sudo mv boot-mod-sdcard.tar.gz /workdir/openwrt
+        cd openwrt
+        sudo mkdir -p boot
+        if [ "${{ github.event.inputs.type_file }}" = "img.gz" ]; then
+          sudo gunzip "${{ github.event.inputs.name_file }}".img.gz
         else
-          unxz firmware.img.xz
+          sudo unxz "${{ github.event.inputs.name_file }}".img.xz
         fi
-        # Additional processing for b860h
-        mv firmware.img firmware-b860h.img
+        device=$(sudo losetup -fP --show "${{ github.event.inputs.name_file }}".img)
+        sudo mount "${device}p1" boot
+        (cd boot && sudo tar xfz /workdir/openwrt/boot-mod-sdcard.tar.gz)
 
-    - name: Compress and Upload
-      run: |
-        cd /workdir/openwrt
-        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
-          gzip firmware-b860h.img
+        # Patch configuration files
+        uenv=$(grep APPEND /workdir/openwrt/boot/uEnv.txt | awk -F 'root=' '{print $2}')
+        extlinux=$(grep APPEND /workdir/openwrt/boot/extlinux/extlinux.conf | awk -F 'root=' '{print $2}')
+        sudo sed -i "s|$extlinux|$uenv|g" /workdir/openwrt/boot/extlinux/extlinux.conf
+
+        if [ "${{ github.event.inputs.type_dtb }}" = "b860h" ]; then
+          dtb="meson-gxl-s905x-b860h.dtb"
+        elif [ "${{ github.event.inputs.type_dtb }}" = "hg680p" ]; then
+          dtb="meson-gxl-s905x-p212.dtb"
+        fi
+        boot=$(grep dtb /workdir/openwrt/boot/boot.ini | awk -F'/' '{print $4}' | cut -d'"' -f1)
+        sudo sed -i "s|$boot|$dtb|g" /workdir/openwrt/boot/boot.ini
+        sudo sed -i "s|$boot|$dtb|g" /workdir/openwrt/boot/extlinux/extlinux.conf
+
+        # Finalize and compress image
+        sudo umount "${device}p1"
+        sudo dd if=u-boot.bin of="${device}" bs=1 count=444 conv=fsync
+        sudo dd if=u-boot.bin of="${device}" bs=512 skip=1 seek=1 conv=fsync
+        sudo losetup -d "${device}"
+
+        if [ "${{ github.event.inputs.type_file }}" = "img.gz" ]; then
+          sudo gzip "${{ github.event.inputs.name_file }}"-"${{ github.event.inputs.type_dtb }".img
         else
-          xz firmware-b860h.img
+          sudo xz "${{ github.event.inputs.name_file }}"-"${{ github.event.inputs.type_dtb }".img
         fi
-        echo "Firmware for b860h built successfully."
+        echo "FIRMWARE=$PWD/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
 
+    - name: Upload firmware for b860h
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: /workdir/openwrt/firmware-b860h.${{ github.event.inputs.type_file }}
+        file: /workdir/openwrt/"${{ github.event.inputs.name_file }}"-"${{ github.event.inputs.type_dtb }"."${{ github.event.inputs.type_file }}"
         tag: ${{ github.ref }}
-        release_name: "b860h Firmware"
+        release_name: "B860H"
 
-  build-hg680p:
-    runs-on: ubuntu-20.04
-    name: Build for hg680p
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@main
-
-    - name: Setup Environment
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y wget python3
-        sudo pip3 install gdown git+https://github.com/Juvenal-Yescas/mediafire-dl
-
-    - name: Download firmware
-      run: |
-        mkdir -p /workdir/openwrt
-        if [[ "${{ github.event.inputs.img_url }}" == *"drive."* ]]; then
-          gdown ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
-        else
-          wget ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
-        fi
-
-    - name: Process firmware for hg680p
-      run: |
-        cd /workdir/openwrt
-        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
-          gunzip firmware.img.gz
-        else
-          unxz firmware.img.xz
-        fi
-        # Additional processing for hg680p
-        mv firmware.img firmware-hg680p.img
-
-    - name: Compress and Upload
-      run: |
-        cd /workdir/openwrt
-        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
-          gzip firmware-hg680p.img
-        else
-          xz firmware-hg680p.img
-        fi
-        echo "Firmware for hg680p built successfully."
-
+    - name: Upload firmware for hg680p
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: /workdir/openwrt/firmware-hg680p.${{ github.event.inputs.type_file }}
+        file: /workdir/openwrt/"${{ github.event.inputs.name_file }}"-"${{ github.event.inputs.type_dtb }"."${{ github.event.inputs.type_file }}"
         tag: ${{ github.ref }}
-        release_name: "hg680p Firmware"
+        release_name: "HG680P"
