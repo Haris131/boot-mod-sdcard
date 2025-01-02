@@ -1,0 +1,124 @@
+
+name: Boot Mod SDCard
+
+on:
+  workflow_dispatch:
+    inputs:
+      type_file:
+        description: "Select type file"
+        required: false
+        default: "img.xz"
+        type: choice
+        options:
+          - img.xz
+          - img.gz
+      img_url:
+        description: "Set the URL of the image file"
+        required: true
+        default: ""
+
+env:
+  TZ: Asia/Jakarta
+
+jobs:
+  build-b860h:
+    runs-on: ubuntu-20.04
+    name: Build for b860h
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Setup Environment
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y wget python3
+        sudo pip3 install gdown git+https://github.com/Juvenal-Yescas/mediafire-dl
+
+    - name: Download firmware
+      run: |
+        mkdir -p /workdir/openwrt
+        if [[ "${{ github.event.inputs.img_url }}" == *"drive."* ]]; then
+          gdown ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+        else
+          wget ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+        fi
+
+    - name: Process firmware for b860h
+      run: |
+        cd /workdir/openwrt
+        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
+          gunzip firmware.img.gz
+        else
+          unxz firmware.img.xz
+        fi
+        # Additional processing for b860h
+        mv firmware.img firmware-b860h.img
+
+    - name: Compress and Upload
+      run: |
+        cd /workdir/openwrt
+        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
+          gzip firmware-b860h.img
+        else
+          xz firmware-b860h.img
+        fi
+        echo "Firmware for b860h built successfully."
+
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: /workdir/openwrt/firmware-b860h.${{ github.event.inputs.type_file }}
+        tag: ${{ github.ref }}
+        release_name: "b860h Firmware"
+
+  build-hg680p:
+    runs-on: ubuntu-20.04
+    name: Build for hg680p
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Setup Environment
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y wget python3
+        sudo pip3 install gdown git+https://github.com/Juvenal-Yescas/mediafire-dl
+
+    - name: Download firmware
+      run: |
+        mkdir -p /workdir/openwrt
+        if [[ "${{ github.event.inputs.img_url }}" == *"drive."* ]]; then
+          gdown ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+        else
+          wget ${{ github.event.inputs.img_url }} -O /workdir/openwrt/firmware.${{ github.event.inputs.type_file }}
+        fi
+
+    - name: Process firmware for hg680p
+      run: |
+        cd /workdir/openwrt
+        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
+          gunzip firmware.img.gz
+        else
+          unxz firmware.img.xz
+        fi
+        # Additional processing for hg680p
+        mv firmware.img firmware-hg680p.img
+
+    - name: Compress and Upload
+      run: |
+        cd /workdir/openwrt
+        if [[ "${{ github.event.inputs.type_file }}" == "img.gz" ]]; then
+          gzip firmware-hg680p.img
+        else
+          xz firmware-hg680p.img
+        fi
+        echo "Firmware for hg680p built successfully."
+
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: /workdir/openwrt/firmware-hg680p.${{ github.event.inputs.type_file }}
+        tag: ${{ github.ref }}
+        release_name: "hg680p Firmware"
