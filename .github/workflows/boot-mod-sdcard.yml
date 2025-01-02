@@ -129,9 +129,13 @@ jobs:
         echo "FIRMWARE=$PWD/firmware.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware
-      uses: actions/upload-artifact@main
-      if: steps.extract.outputs.status == 'success'
+    - name: Upload release asset
+      uses: svenstaro/upload-release-action@v2
       with:
-        name: firmware-${{ github.event.inputs.type_dtb }}
-        path: ${{ env.FIRMWARE }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: openwrt/*.img.gz
+        tag: ${{ github.ref }}
+        file_glob: true
+        overwrite: true
+        body: |
+          ##  Hasil mod sdcard
