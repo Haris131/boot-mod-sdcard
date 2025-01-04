@@ -6,7 +6,7 @@
 name: boot mod sdcard ( fix )
 
 on:
-  repository_dispatch:
+  #repository_dispatch:
   workflow_dispatch:
     inputs:
       type_dtb:
