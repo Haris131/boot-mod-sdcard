@@ -3,11 +3,10 @@
 # https://github.com/Haris131/boot-mod-sdcard
 #==========================================================================
 
-name: boot mod sdcard ( fix )
+name: Telegram bot remote
 
 on:
-  #repository_dispatch:
-  workflow_dispatch:
+  repository_dispatch:
     inputs:
       type_dtb:
         description: "Select type file"
@@ -61,26 +60,26 @@ jobs:
           sudo mkdir -p /workdir/openwrt
           sudo chown $USER:$GROUPS /workdir
 
-      - name: Download file ${{ github.event.inputs.type_file }}
+      - name: Download file ${{ github.event.client_payload.type_file }}
         working-directory: /workdir
         run: |
           df -hT $PWD
-          if [ $(echo ${{ github.event.inputs.img_url }} | grep "drive.") ]; then
-            if [ $(echo ${{ github.event.inputs.img_url }} | awk -F "/" '{print $6}') ]; then
-              link_gdrive=$(echo ${{ github.event.inputs.img_url }} | awk -F "/" '{print $6}')
+          if [ $(echo ${{ github.event.client_payload.img_url }} | grep "drive.") ]; then
+            if [ $(echo ${{ github.event.client_payload.img_url }} | awk -F "/" '{print $6}') ]; then
+              link_gdrive=$(echo ${{ github.event.client_payload.img_url }} | awk -F "/" '{print $6}')
             else
-              link_gdrive=$(echo ${{ github.event.inputs.img_url }} | awk -F "/" '{print $4}' | awk -F "?id=" '{print $2}'|awk -F "&export" '{print $1}')
+              link_gdrive=$(echo ${{ github.event.client_payload.img_url }} | awk -F "/" '{print $4}' | awk -F "?id=" '{print $2}'|awk -F "&export" '{print $1}')
             fi
-            sudo gdown ${link_gdrive} -O openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+            sudo gdown ${link_gdrive} -O openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
           else
-            if [ $(echo ${{ github.event.inputs.img_url }} | grep "mediafire.com") ]; then
-              sudo mediafire-dl ${{ github.event.inputs.img_url }} -o openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+            if [ $(echo ${{ github.event.client_payload.img_url }} | grep "mediafire.com") ]; then
+              sudo mediafire-dl ${{ github.event.client_payload.img_url }} -o openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
             else
-              if [ $(echo ${{ github.event.inputs.img_url }} | grep "mega.nz") ]; then
-                file_mega=$(sudo mega-get ${{ github.event.inputs.img_url }} | awk -F: '{print $2}')
-                sudo mv ${file_mega} openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+              if [ $(echo ${{ github.event.client_payload.img_url }} | grep "mega.nz") ]; then
+                file_mega=$(sudo mega-get ${{ github.event.client_payload.img_url }} | awk -F: '{print $2}')
+                sudo mv ${file_mega} openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
               else
-                sudo wget --no-check-certificate ${{ github.event.inputs.img_url }} -O openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+                sudo wget --no-check-certificate ${{ github.event.client_payload.img_url }} -O openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
               fi
             fi
           fi
@@ -93,12 +92,12 @@ jobs:
           sudo mv boot-mod-sdcard.tar.gz /workdir/openwrt
           cd openwrt
           sudo mkdir -p boot
-          if [ ${{ github.event.inputs.type_file }} = "img.gz" ]; then
-            sudo gunzip ${{ github.event.inputs.name_file }}.img.gz
+          if [ ${{ github.event.client_payload.type_file }} = "img.gz" ]; then
+            sudo gunzip ${{ github.event.client_payload.name_file }}.img.gz
           else
-            sudo unxz ${{ github.event.inputs.name_file }}.img.xz
+            sudo unxz ${{ github.event.client_payload.name_file }}.img.xz
           fi
-          device=$(sudo losetup -fP --show ${{ github.event.inputs.name_file }}.img)
+          device=$(sudo losetup -fP --show ${{ github.event.client_payload.name_file }}.img)
           sudo mount ${device}p1 boot
           (cd boot && sudo tar xfz /workdir/openwrt/boot-mod-sdcard.tar.gz)
           echo -e "Patching extlinux.conf"
@@ -107,9 +106,9 @@ jobs:
           sudo sed -i "s/$extlinux/$uenv/g" /workdir/openwrt/boot/extlinux/extlinux.conf
           sleep 1
           echo -e "Patching boot.ini"
-          if [ ${{ github.event.inputs.type_dtb }} = "b860h" ]; then
+          if [ ${{ github.event.client_payload.type_dtb }} = "b860h" ]; then
             dtb="meson-gxl-s905x-b860h.dtb"
-          elif [ ${{ github.event.inputs.type_dtb }} = "hg680p" ]; then
+          elif [ ${{ github.event.client_payload.type_dtb }} = "hg680p" ]; then
             dtb="meson-gxl-s905x-p212.dtb"
           fi
           boot=$(sudo cat /workdir/openwrt/boot/boot.ini | grep dtb | awk -F "/" '{print $4}' | cut -d'"' -f1)
@@ -124,13 +123,13 @@ jobs:
           echo -e "Patching Success"
           sleep 1
           echo -e "Compress file img"
-          if [ ${{ github.event.inputs.type_file }} = "img.gz" ]; then
-            sudo gzip ${{ github.event.inputs.name_file }}.img
+          if [ ${{ github.event.client_payload.type_file }} = "img.gz" ]; then
+            sudo gzip ${{ github.event.client_payload.name_file }}.img
           else
-            sudo xz ${{ github.event.inputs.name_file }}.img
+            sudo xz ${{ github.event.client_payload.name_file }}.img
           fi
           echo -e "Compress Success"
-          echo "FIRMWARE=$PWD/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}" >> $GITHUB_ENV
+          echo "FIRMWARE=$PWD/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: List files in /workdir/openwrt
@@ -138,19 +137,19 @@ jobs:
           ls -l /workdir/openwrt
           
       - name: Upload firmware for b860h
-        if: ${{ github.event.inputs.type_dtb == 'b860h' }}
+        if: ${{ github.event.client_payload.type_dtb == 'b860h' }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: /workdir/openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+          file: /workdir/openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
           tag: b860h-${{ github.ref }}
           release_name: "B860H Firmware Release"
 
       - name: Upload firmware for hg680p
-        if: ${{ github.event.inputs.type_dtb == 'hg680p' }}
+        if: ${{ github.event.client_payload.type_dtb == 'hg680p' }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: /workdir/openwrt/${{ github.event.inputs.name_file }}.${{ github.event.inputs.type_file }}
+          file: /workdir/openwrt/${{ github.event.client_payload.name_file }}.${{ github.event.client_payload.type_file }}
           tag: hg680p-${{ github.ref }}
           release_name: "HG680P Firmware Release"
