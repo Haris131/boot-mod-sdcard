@@ -39,7 +39,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -56,7 +56,8 @@ jobs:
           sudo -E apt-get -qq clean
           sudo pip3 install gdown
           sudo pip3 install git+https://github.com/Juvenal-Yescas/mediafire-dl
-          wget https://mega.nz/linux/repo/xUbuntu_20.04/amd64/megacmd-xUbuntu_20.04_amd64.deb && sudo apt install "$PWD/megacmd-xUbuntu_20.04_amd64.deb"
+          megacmd_ver=$(sudo cat /etc/*ease | grep "DISTRIB_RELEASE" | awk -F "=" '{print $2}')
+          wget https://mega.nz/linux/repo/xUbuntu_${megacmd_ver}/amd64/megacmd-xUbuntu_${megacmd_ver}_amd64.deb && sudo apt install "$PWD/megacmd-xUbuntu_${megacmd_ver}_amd64.deb"
           sudo timedatectl set-timezone "$TZ"
           sudo mkdir -p /workdir/openwrt
           sudo chown $USER:$GROUPS /workdir
