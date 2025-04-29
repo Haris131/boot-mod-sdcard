@@ -39,6 +39,8 @@ env:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
@@ -85,9 +87,6 @@ jobs:
       - name: Extract firmware
         id: extract
         run: |
-          sudo mv u-boot.bin /workdir/openwrt
-          sudo mv boot-mod-sdcard.tar.gz /workdir/openwrt
-          cd openwrt
           sudo mkdir -p boot
           if [ ${{ github.event.inputs.type_file }} = "img.gz" ]; then
             sudo gunzip ${{ github.event.inputs.name_file }}.img.gz
@@ -134,7 +133,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: env.FIRMWARE
+          file: ${{ env.FIRMWARE }}
           tag: b860h-${{ github.ref }}
           release_name: "B860H Firmware Release"
 
@@ -143,6 +142,6 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: env.FIRMWARE
+          file: $ {{ env.FIRMWARE }}
           tag: hg680p-${{ github.ref }}
           release_name: "HG680P Firmware Release"
